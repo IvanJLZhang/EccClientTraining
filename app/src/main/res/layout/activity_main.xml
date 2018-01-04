@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<GridLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_height="fill_parent"
+    android:layout_width="match_parent"
+    android:columnCount="2"
+    android:layout_margin="8dp"
+    android:rowCount="5">
+    <TextView
+        android:id="@+id/tv_title"
+        android:layout_row="0"
+        android:layout_column="0"
+        android:layout_columnWeight="9"
+        android:layout_height="50dp"
+        android:text="ECC Client v1.0.0"
+        android:textSize="20sp"
+        android:gravity="center_vertical" />
+    <ImageView
+        android:id="@+id/signal_view"
+        android:layout_row="0"
+        android:layout_column="1"
+        android:layout_columnWeight="1"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:layout_margin="8dp"
+        android:contentDescription="signal info state"
+        android:src="@drawable/signal_empty"/>
+    <View
+        android:layout_row="1"
+        android:layout_column="0"
+        android:layout_height="2dp"
+        android:layout_width="match_parent"
+        android:background="#444"
+        android:layout_columnSpan="2"
+        />
+    <FrameLayout
+        android:id="@+id/fg_content"
+        android:layout_row="2"
+        android:layout_column="0"
+        android:layout_width="match_parent"
+        android:layout_height="200dp"
+        android:layout_columnSpan="2"
+        android:background="@drawable/text_view_border"
+        android:layout_marginTop="10dp"
+        />
+    <ScrollView
+        android:layout_row="3"
+        android:layout_column="0"
+        android:layout_columnSpan="2"
+        android:layout_width="match_parent"
+        android:layout_height="250dp"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/text_view_border"
+        android:scrollbars="vertical"
+        android:fadeScrollbars="false"
+        >
+        <TextView
+            android:id="@+id/tv_log_msg"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:freezesText="true"
+            android:scrollbars="vertical"
+            android:fadeScrollbars="false"
+            />
+    </ScrollView>
+    <TextClock
+        android:layout_row="4"
+        android:layout_column="0"
+        android:layout_width="match_parent"
+        android:layout_columnSpan="2"
+        android:gravity="center_horizontal"
+        android:layout_gravity="bottom"
+        android:id="@+id/t_clock"
+        android:format24Hour="yyyy-MMM-dd - hh:mm:ss"
+        android:format12Hour="MMM dd, yyyy - h:mm:ssaa"
+        android:textSize="20sp"/>
+</GridLayout>

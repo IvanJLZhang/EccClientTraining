@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">EccClient</string>
+    <string name="EccServerConfigTitle">Ecc Server Config</string>
+    <string name="EccServerIpAddress">IPv4 Address</string>
+    <string name="EccServerUDPPort">UDP Port</string>
+
+    <string name="local_config_title">Ecc Client Connection Config</string>
+    <string name="local_ip_address">Assigned Device IPv4 Address</string>
+    <string name="local_listen_port">Please enter UDP Port Number</string>
+    <string name="go_button_text">go</string>
+
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">ECC Server is Connected</string>
+</resources>
