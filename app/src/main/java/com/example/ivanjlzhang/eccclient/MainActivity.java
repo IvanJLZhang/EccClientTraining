@@ -4,6 +4,7 @@ import android.app.Fragment;
 import android.app.FragmentManager;
 import android.app.FragmentTransaction;
 import android.content.Context;
+import android.content.IntentFilter;
 import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.Message;
@@ -12,8 +13,10 @@ import android.os.Bundle;
 import android.text.method.ScrollingMovementMethod;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.ScrollView;
 import android.widget.TextView;
 
 import com.example.ivanjlzhang.eccclient.Common.CommonFunctions;
@@ -38,10 +41,8 @@ public class MainActivity extends AppCompatActivity implements ConnectionConfigB
     EccClient eccClient;
 
     TextView tv_log_msg;
-
+    ScrollView sv_scroll;
     private boolean isFistRun = true;
-    public static NetBroadcastReceiver.iNetEvent netEvent;
-
     Handler eccClientMsgHandler = new Handler(){
         @Override
         public void handleMessage(Message msg) {
@@ -56,15 +57,26 @@ public class MainActivity extends AppCompatActivity implements ConnectionConfigB
             super.handleMessage(msg);
             switch (msg.what){
                 case NetworkCheckService.MSG_NET_STATE:
-                    updateNetworkSignal((boolean)msg.obj);
+                    boolean isNetworkConnected = (boolean)msg.obj;
+                    if(isNetworkConnected && eccClient != null){
+                        eccClient.resume();
+                    }
+                    updateNetworkSignal(isNetworkConnected);
                     break;
                 case NetworkCheckService.MSG_CHECK_NET_STATE:
                     logMsg(msg.obj.toString());
+                    break;
+                case NetworkCheckService.MSG_IS_CHECKING:
+                    setAppReadyState(!(boolean)msg.obj);
                     break;
             }
         }
     };
     NetworkCheckService networkCheckService;
+
+    NetBroadcastReceiver netBroadcastReceiver = new NetBroadcastReceiver();
+    IntentFilter intentFilter;
+
     private void handleEccClientMessage(Message msg){
         switch (msg.what){
             case EccClient.MSG_SERVER_STATUS:
@@ -106,9 +118,23 @@ public class MainActivity extends AppCompatActivity implements ConnectionConfigB
             getSupportActionBar().hide();
         }
         setContentView(R.layout.activity_main);
-        getActivityView();
+//        new Thread(new Runnable() {
+//            @Override
+//            public void run() {
+                initialization();
+//            }
+//        }).start();
+    }
 
-        netEvent = this;
+    private void initialization(){
+        getActivityView();
+        logMsg("initialize for the app...");
+//        netBroadcastReceiver = new NetBroadcastReceiver();
+        netBroadcastReceiver.event = this;
+        intentFilter = new IntentFilter();
+        intentFilter.addAction("android.net.conn.CONNECTIVITY_CHANGE");
+        intentFilter.addAction("android.net.wifi.WIFI_STATE_CHANGED");
+        intentFilter.addAction("android.net.wifi.STATE_CHANGE");
 
         fragmentb = new ConnectionConfigBFragment();
         showContentFragment(fragmentb);
@@ -119,13 +145,26 @@ public class MainActivity extends AppCompatActivity implements ConnectionConfigB
 
         networkCheckService = new NetworkCheckService();
         networkCheckService.setHandler(netStateCheckHandler);
-        networkCheckService.startToCheckNetState(this);
+
+//        setAppReadyState(false);
+//        networkCheckService.startToCheckNetState(this);
     }
 
+    @Override
+    public void onNetChanged(String netState) {
+        if(networkCheckService != null){
+            cleanMsg();
+            logMsg("network has been changed.");
+            if(eccClient != null)
+                eccClient.pause();
+            networkCheckService.startToCheckNetState(this);
+        }
+    }
     protected void getActivityView(){
         iv_signal_state = findViewById(R.id.signal_view);
         tv_log_msg = findViewById(R.id.tv_log_msg);
         tv_log_msg.setMovementMethod(ScrollingMovementMethod.getInstance());
+        sv_scroll = findViewById(R.id.sv_scroll);
         TextView tv_title = findViewById(R.id.tv_title);
         String title = getString(R.string.app_name) + " v" + CommonFunctions.getAppVersionName(this);
         tv_title.setText(title);
@@ -166,19 +205,26 @@ public class MainActivity extends AppCompatActivity implements ConnectionConfigB
     }
 
     private void updateNetworkSignal(boolean isNetworkConnected){
+        setAppReadyState(isNetworkConnected);
         try {
             TextView tv_local_ip = fragmentb.getView().findViewById(R.id.local_device_ip_addr);
             if(isNetworkConnected){
                 iv_signal_state.setImageDrawable(getDrawable( R.drawable.signal_full));
-                String local_ip = NetworkUtil.getAssignedIPAddress();
-                tv_local_ip.setText(local_ip);
-
+                String old_ip = tv_local_ip.getText().toString();
+                String local_ip = NetworkUtil.getAssignedIPAddress(this);
+                if(old_ip != local_ip){
+                    tv_local_ip.setText(local_ip);
+                }
             }else{
                 iv_signal_state.setImageDrawable(getDrawable(R.drawable.signal_empty));
                 tv_local_ip.setText("127.0.0.1");
                 CountDownTimer countDownTimer = new CountDownTimer(const_inc.APP_EXIT_WAIT_TIME, 1000) {
                     @Override
                     public void onTick(long millisUntilFinished) {
+                        if(networkCheckService.isHasInternetAccess()){
+                            this.cancel();
+                            return;
+                        }
                         cleanMsg();
                         logMsg("this app will be terminated in " + millisUntilFinished / 1000 + "s.");
                     }
@@ -195,14 +241,23 @@ public class MainActivity extends AppCompatActivity implements ConnectionConfigB
             ex.printStackTrace();
         }
     }
-
-
     private void updateListenStatus(boolean isListening){
         try {
             Button button = fragmentb.getView().findViewById(R.id.btn_go);
             TextView textView = fragmentb.getView().findViewById(R.id.et_port);
             button.setEnabled(!isListening);
             textView.setEnabled(!isListening);
+        }catch (Exception ex){
+            ex.printStackTrace();
+        }
+    }
+
+    private void setAppReadyState(boolean isAppReady){
+        try {
+            Button button = fragmentb.getView().findViewById(R.id.btn_go);
+            TextView textView = fragmentb.getView().findViewById(R.id.et_port);
+            button.setEnabled(isAppReady);
+            textView.setEnabled(isAppReady);
         }catch (Exception ex){
             ex.printStackTrace();
         }
@@ -227,11 +282,28 @@ public class MainActivity extends AppCompatActivity implements ConnectionConfigB
         Log.d(TAG, msg);
         String logLine = msg + "\n";
         tv_log_msg.append(logLine);
+
+        {
+            int offset = tv_log_msg.getMeasuredHeight() -
+                    sv_scroll.getMeasuredHeight();
+            if(offset < 0){
+                offset = 0;
+            }
+            sv_scroll.scrollTo(0, offset);
+        }
     }
 
     private void cleanMsg(){
         tv_log_msg.setText("");
-        tv_log_msg.scrollTo(0, 0);
+
+        {
+            int offset = tv_log_msg.getMeasuredHeight() -
+                    sv_scroll.getMeasuredHeight();
+            if(offset < 0){
+                offset = 0;
+            }
+            sv_scroll.scrollTo(0, offset);
+        }
     }
 
     @Override
@@ -247,13 +319,15 @@ public class MainActivity extends AppCompatActivity implements ConnectionConfigB
     protected void onPause() {
         super.onPause();
         if(eccClient != null){
-            eccClient.stop();
+            eccClient.pause();
         }
+        this.unregisterReceiver(this.netBroadcastReceiver);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        this.registerReceiver(this.netBroadcastReceiver, intentFilter);
         if(eccClient != null && !isFistRun) {
             eccClient.resume();
         }
@@ -265,14 +339,6 @@ public class MainActivity extends AppCompatActivity implements ConnectionConfigB
         super.onBackPressed();
         if(eccClient != null){
             eccClient.stop();
-        }
-    }
-
-    @Override
-    public void onNetChanged(boolean netState) {
-        if(networkCheckService != null){
-            logMsg("network has been changed.");
-            networkCheckService.startToCheckNetState(this);
         }
     }
 }

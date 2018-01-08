@@ -22,7 +22,8 @@
             </intent-filter>
         </activity>
 
-        <receiver android:name=".network.NetBroadcastReceiver">
+        <receiver android:name=".network.NetBroadcastReceiver"
+            >
             <intent-filter>
                 <action android:name="android.net.conn.CONNECTIVITY_CHANGE"
                     />

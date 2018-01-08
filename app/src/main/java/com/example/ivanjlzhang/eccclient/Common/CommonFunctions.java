@@ -15,34 +15,6 @@ import java.util.Enumeration;
  */
 
 public abstract class CommonFunctions {
-    public static String getAssignedIPAddress() {
-        String localip = "";
-        try {
-            Enumeration networkInterface = NetworkInterface.getNetworkInterfaces();
-            InetAddress ia = null;
-            while (networkInterface.hasMoreElements()){
-                NetworkInterface networkInterface1 = (NetworkInterface) networkInterface.nextElement();
-                Enumeration<InetAddress> ias = networkInterface1.getInetAddresses();
-                while (ias.hasMoreElements()){
-                    ia = ias.nextElement();
-                    if(ia instanceof Inet6Address){
-                        continue;
-                    }
-                    String ip = ia.getHostAddress();
-                    if(!"127.0.0.1".equals(ip)){
-                        localip = ia.getHostAddress();
-                        break;
-                    }
-                }
-            }
-        } catch (SocketException e) {
-            e.printStackTrace();
-        }catch (Exception e){
-            e.printStackTrace();
-        }
-        return localip;
-    }
-
     /**
      * 返回当前程序版本名
      */

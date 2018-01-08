@@ -63,11 +63,6 @@ public class ConnectionConfigBFragment extends Fragment implements View.OnClickL
         if(port.getText().toString().isEmpty()){
             port.setText("1024");
         }
-//        port.clearFocus();
-//        String ip = NetworkUtil.getAssignedIPAddress();
-//        if(!ip.isEmpty()){
-//            localIpAddress.setText(ip);
-//        }
     }
 
     @Override

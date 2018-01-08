@@ -32,6 +32,7 @@ public class EccClient {
     private String serverIp = "";
     private int serverPort = 0;
 
+    private boolean isPause = false;
     private DatagramSocket mUDPSocket;
 
     private ReadThread receiveThread = new ReadThread();
@@ -42,10 +43,10 @@ public class EccClient {
 
     public EccClient start(int localPort){
         if(isServerValid){
-            if(localPort == this.localPort){
-                logMsg("Duplicated localPort: " + this.localPort);
-                return this;
-            }
+//            if(localPort == this.localPort){
+//                logMsg("Duplicated localPort: " + this.localPort);
+//                return this;
+//            }
             stop();
         }
         this.localPort = localPort;
@@ -68,9 +69,20 @@ public class EccClient {
         return this;
     }
 
+    public void pause(){
+        if(isServerValid && !isPause){
+            logMsg("pause the ecc client service.");
+            isPause = true;
+            stop();
+        }
+    }
+
     public void resume(){
-        if(localPort > 0)
+        if(localPort > 0 && isPause){
+            logMsg("resume the ecc client service.");
             start(this.localPort);
+            isPause = false;
+        }
     }
 
 

@@ -3,9 +3,13 @@ package com.example.ivanjlzhang.eccclient.network;
 import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
+import android.support.annotation.Nullable;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 
+import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
@@ -97,31 +101,41 @@ public abstract class NetworkUtil {
         return isWifiDataEnable;
     }
 
-    public static String getAssignedIPAddress() {
-        String localip = "";
-        try {
-            Enumeration networkInterface = NetworkInterface.getNetworkInterfaces();
-            InetAddress ia = null;
-            while (networkInterface.hasMoreElements()){
-                NetworkInterface networkInterface1 = (NetworkInterface) networkInterface.nextElement();
-                Enumeration<InetAddress> ias = networkInterface1.getInetAddresses();
-                while (ias.hasMoreElements()){
-                    ia = ias.nextElement();
-                    if(ia instanceof Inet6Address){
-                        continue;
+    @Nullable
+    public static String getAssignedIPAddress(Context context) {
+        NetworkInfo info = ((ConnectivityManager) context
+                .getSystemService(Context.CONNECTIVITY_SERVICE)).getActiveNetworkInfo();
+        if (info != null && info.isConnected()) {
+            if (info.getType() == ConnectivityManager.TYPE_MOBILE) {//当前使用2G/3G/4G网络
+                try {
+                    for (Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces(); en.hasMoreElements(); ) {
+                        NetworkInterface intf = en.nextElement();
+                        for (Enumeration<InetAddress> enumIpAddr = intf.getInetAddresses(); enumIpAddr.hasMoreElements(); ) {
+                            InetAddress inetAddress = enumIpAddr.nextElement();
+                            if (!inetAddress.isLoopbackAddress() && inetAddress instanceof Inet4Address) {
+                                return inetAddress.getHostAddress();
+                            }
+                        }
                     }
-                    String ip = ia.getHostAddress();
-                    if(!"127.0.0.1".equals(ip)){
-                        localip = ia.getHostAddress();
-                        break;
-                    }
+                } catch (SocketException e) {
+                    e.printStackTrace();
                 }
+
+            } else if (info.getType() == ConnectivityManager.TYPE_WIFI) {//当前使用无线网络
+                WifiManager wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
+                WifiInfo wifiInfo = wifiManager.getConnectionInfo();
+                String ipAddress = intIP2StringIP(wifiInfo.getIpAddress());//得到IPV4地址
+                return ipAddress;
             }
-        } catch (SocketException e) {
-            e.printStackTrace();
-        }catch (Exception e){
-            e.printStackTrace();
+        } else {
+            //当前无网络连接,请在设置中打开网络
         }
-        return localip;
+        return "";
+    }
+    public static String intIP2StringIP(int ip) {
+        return (ip & 0xFF) + "." +
+                ((ip >> 8) & 0xFF) + "." +
+                ((ip >> 16) & 0xFF) + "." +
+                (ip >> 24 & 0xFF);
     }
 }

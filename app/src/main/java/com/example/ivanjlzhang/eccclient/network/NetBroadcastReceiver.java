@@ -4,27 +4,27 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.net.ConnectivityManager;
-
-import com.example.ivanjlzhang.eccclient.MainActivity;
-
 /**
  * Created by ivanjlzhang on 18-1-4.
  */
 
 public class NetBroadcastReceiver extends BroadcastReceiver {
 
-    public iNetEvent event = (iNetEvent) MainActivity.netEvent;
+    public iNetEvent event;
     @Override
     public void onReceive(Context context, Intent intent) {
-        if(intent.getAction().equals(ConnectivityManager.CONNECTIVITY_ACTION)){
-            boolean netState = NetworkUtil.checkNetState(context);
+        if(intent.getAction().equals(ConnectivityManager.CONNECTIVITY_ACTION)
+//                ||
+//                intent.getAction().equals(WifiManager.WIFI_STATE_CHANGED_ACTION) ||
+//                intent.getAction().equals(WifiManager.NETWORK_STATE_CHANGED_ACTION)
+                ){
             if(event != null){
-                event.onNetChanged(netState);
+                event.onNetChanged(intent.getAction());
             }
         }
     }
 
     public interface iNetEvent{
-        void onNetChanged(boolean netState);
+        void onNetChanged(String netState);
     }
 }
