@@ -3,7 +3,6 @@ package com.example.ivanjlzhang.eccclient;
 import android.app.Fragment;
 import android.app.FragmentManager;
 import android.app.FragmentTransaction;
-import android.content.Context;
 import android.content.IntentFilter;
 import android.os.CountDownTimer;
 import android.os.Handler;
@@ -11,9 +10,7 @@ import android.os.Message;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.method.ScrollingMovementMethod;
-import android.util.AttributeSet;
 import android.util.Log;
-import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ScrollView;
@@ -23,6 +20,10 @@ import com.example.ivanjlzhang.eccclient.Common.CommonFunctions;
 import com.example.ivanjlzhang.eccclient.network.NetBroadcastReceiver;
 import com.example.ivanjlzhang.eccclient.network.NetworkCheckService;
 import com.example.ivanjlzhang.eccclient.network.NetworkUtil;
+
+import static com.example.ivanjlzhang.eccclient.mainloop.Antenna.ANTENNA_CONFIGURATION_REQUEST;
+import static com.example.ivanjlzhang.eccclient.mainloop.Antenna.ANTENNA_CONFIGURATION_STATUS_REQUEST;
+import static com.example.ivanjlzhang.eccclient.mainloop.Antenna.ANTENNA_INFORMATION_REQUEST;
 
 public class MainActivity extends AppCompatActivity implements ConnectionConfigBFragment.iMessageTransition
                                                     , NetBroadcastReceiver.iNetEvent
@@ -106,7 +107,16 @@ public class MainActivity extends AppCompatActivity implements ConnectionConfigB
      */
     private void handleRequest(byte[] data){
         if(data != null){
-            eccClient.sendData(data);
+            switch (data[0]){
+                case ANTENNA_CONFIGURATION_REQUEST:
+                    break;
+                case ANTENNA_INFORMATION_REQUEST:
+                    break;
+                case ANTENNA_CONFIGURATION_STATUS_REQUEST:
+                    break;
+                default:// default is a ping command.
+                    eccClient.sendData(data);
+            }
         }
     }
     @Override
@@ -145,9 +155,6 @@ public class MainActivity extends AppCompatActivity implements ConnectionConfigB
 
         networkCheckService = new NetworkCheckService();
         networkCheckService.setHandler(netStateCheckHandler);
-
-//        setAppReadyState(false);
-//        networkCheckService.startToCheckNetState(this);
     }
 
     @Override
