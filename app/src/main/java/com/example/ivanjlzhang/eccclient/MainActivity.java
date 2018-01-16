@@ -17,9 +17,12 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import com.example.ivanjlzhang.eccclient.Common.CommonFunctions;
+import com.example.ivanjlzhang.eccclient.mainloop.EccCMD;
 import com.example.ivanjlzhang.eccclient.network.NetBroadcastReceiver;
 import com.example.ivanjlzhang.eccclient.network.NetworkCheckService;
 import com.example.ivanjlzhang.eccclient.network.NetworkUtil;
+
+import java.lang.reflect.Field;
 
 import static com.example.ivanjlzhang.eccclient.mainloop.Antenna.ANTENNA_CONFIGURATION_REQUEST;
 import static com.example.ivanjlzhang.eccclient.mainloop.Antenna.ANTENNA_CONFIGURATION_STATUS_REQUEST;
@@ -41,6 +44,7 @@ public class MainActivity extends AppCompatActivity implements ConnectionConfigB
 
     EccClient eccClient;
 
+    EccCMD eccCMD;
     TextView tv_log_msg;
     ScrollView sv_scroll;
     private boolean isFistRun = true;
@@ -73,6 +77,15 @@ public class MainActivity extends AppCompatActivity implements ConnectionConfigB
             }
         }
     };
+
+    Handler cmdExecResultHandler = new Handler(){
+        @Override
+        public void handleMessage(Message msg) {
+            super.handleMessage(msg);
+            handleCmdResult(msg);
+        }
+    };
+
     NetworkCheckService networkCheckService;
 
     NetBroadcastReceiver netBroadcastReceiver = new NetBroadcastReceiver();
@@ -96,7 +109,7 @@ public class MainActivity extends AppCompatActivity implements ConnectionConfigB
                 break;
             case EccClient.MSG_DATA_RECEIVE:
                 byte[] data = (byte[])msg.obj;
-                handleRequest(data);
+                handleRequestCommand(data);
                 break;
         }
     }
@@ -105,20 +118,74 @@ public class MainActivity extends AppCompatActivity implements ConnectionConfigB
      * 处理Server发来的命令请求
      * @param data
      */
-    private void handleRequest(byte[] data){
+    private void handleRequestCommand(byte[] data){
         if(data != null){
-            switch (data[0]){
-                case ANTENNA_CONFIGURATION_REQUEST:
-                    break;
-                case ANTENNA_INFORMATION_REQUEST:
-                    break;
-                case ANTENNA_CONFIGURATION_STATUS_REQUEST:
-                    break;
-                default:// default is a ping command.
-                    eccClient.sendData(data);
+            if(data[0] == ANTENNA_CONFIGURATION_REQUEST ||
+                    data[0] == ANTENNA_CONFIGURATION_STATUS_REQUEST ||
+                    data[0] == ANTENNA_INFORMATION_REQUEST){
+                eccCMD.callCmd(data);
+            }else{// 其他命令均视作ping命令， 原样返回
+                eccClient.sendData(data);
             }
         }
     }
+
+    /**
+     * 处理modom层执行命令返回消息
+     * @param message
+     */
+    private void handleCmdResult(Message message){
+        try {
+            Field exceptionField = message.obj.getClass().getField("exception");
+            Exception exception= (Exception) exceptionField.get(message.obj);
+            if(exception != null){
+                // 处理error
+                logMsg(exception.toString());
+                return;
+            }
+        } catch (NoSuchFieldException e) {
+            e.printStackTrace();
+            return;
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        }
+        logMsg("execute cmd response message.what: " + message.what);
+        switch (message.what){
+            case ANTENNA_CONFIGURATION_REQUEST:
+                break;
+            case ANTENNA_CONFIGURATION_STATUS_REQUEST:
+                try {
+                    Field result = message.obj.getClass().getField("result");
+                    String[] results = (String[])result.get(message.obj);
+                    for (int index = 0; index != results.length; index++){
+                        logMsg("index: " + index + ",value: " + results[index]);
+                    }
+//                    logMsg("primary: " + results[0] + "secondary: " + results[1]);
+                } catch (NoSuchFieldException e) {
+                    e.printStackTrace();
+                } catch (IllegalAccessException e) {
+                    e.printStackTrace();
+                }
+                break;
+            case ANTENNA_INFORMATION_REQUEST:
+                try {
+                    Field result = message.obj.getClass().getField("result");
+                    String[] results = (String[])result.get(message.obj);
+                    for (int index = 0; index != results.length; index++){
+                        logMsg("index: " + index + ",value: " + results[index]);
+                    }
+//                    logMsg("primary: " + results[0] + "secondary: " + results[1]);
+                } catch (NoSuchFieldException e) {
+                    e.printStackTrace();
+                } catch (IllegalAccessException e) {
+                    e.printStackTrace();
+                }
+                break;
+            default:
+                break;
+        }
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -155,6 +222,9 @@ public class MainActivity extends AppCompatActivity implements ConnectionConfigB
 
         networkCheckService = new NetworkCheckService();
         networkCheckService.setHandler(netStateCheckHandler);
+
+        eccCMD = new EccCMD();
+        eccCMD.setResultHandler(this.cmdExecResultHandler);
     }
 
     @Override
@@ -281,8 +351,12 @@ public class MainActivity extends AppCompatActivity implements ConnectionConfigB
      */
     @Override
     public void GoButtonClicked(String msg) {
-        int port = Integer.parseInt(msg);
-        eccClient.start(port);
+//        int port = Integer.parseInt(msg);
+//        eccClient.start(port);
+//        byte[] data = new byte[]{ANTENNA_CONFIGURATION_STATUS_REQUEST};
+        byte[] data = new byte[]{ANTENNA_CONFIGURATION_STATUS_REQUEST};
+//        byte[] data = new byte[]{ANTENNA_CONFIGURATION_REQUEST, 0x03};
+        eccCMD.callCmd(data);
     }
 
     private void logMsg(String msg){
