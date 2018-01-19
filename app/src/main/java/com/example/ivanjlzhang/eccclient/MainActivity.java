@@ -17,6 +17,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import com.example.ivanjlzhang.eccclient.Common.CommonFunctions;
+import com.example.ivanjlzhang.eccclient.mainloop.Antenna;
 import com.example.ivanjlzhang.eccclient.mainloop.EccCMD;
 import com.example.ivanjlzhang.eccclient.network.NetBroadcastReceiver;
 import com.example.ivanjlzhang.eccclient.network.NetworkCheckService;
@@ -135,13 +136,15 @@ public class MainActivity extends AppCompatActivity implements ConnectionConfigB
      * @param message
      */
     private void handleCmdResult(Message message){
+        byte[] resp = null;
+        boolean hasError = false;
         try {
             Field exceptionField = message.obj.getClass().getField("exception");
             Exception exception= (Exception) exceptionField.get(message.obj);
             if(exception != null){
                 // 处理error
                 logMsg(exception.toString());
-                return;
+                hasError = true;
             }
         } catch (NoSuchFieldException e) {
             e.printStackTrace();
@@ -149,40 +152,62 @@ public class MainActivity extends AppCompatActivity implements ConnectionConfigB
         } catch (IllegalAccessException e) {
             e.printStackTrace();
         }
-        logMsg("execute cmd response message.what: " + message.what);
+        logMsg("execute cmd result message.what: " + message.what);
         switch (message.what){
             case ANTENNA_CONFIGURATION_REQUEST:
+                if(hasError){
+                    resp = Antenna.packErrorResponse(false);
+                }
                 break;
             case ANTENNA_CONFIGURATION_STATUS_REQUEST:
-                try {
-                    Field result = message.obj.getClass().getField("result");
-                    String[] results = (String[])result.get(message.obj);
-                    for (int index = 0; index != results.length; index++){
-                        logMsg("index: " + index + ",value: " + results[index]);
-                    }
+                if(hasError);
+                else {
+                    try {
+                        Field result = message.obj.getClass().getField("result");
+                        String[] results = (String[]) result.get(message.obj);
+                        for (int index = 0; index != results.length; index++) {
+                            logMsg(results[index]);
+                        }
+                        resp = Antenna.packConfigurationStatusResp(results);
 //                    logMsg("primary: " + results[0] + "secondary: " + results[1]);
-                } catch (NoSuchFieldException e) {
-                    e.printStackTrace();
-                } catch (IllegalAccessException e) {
-                    e.printStackTrace();
+                    } catch (NoSuchFieldException e) {
+                        e.printStackTrace();
+                    } catch (IllegalAccessException e) {
+                        e.printStackTrace();
+                    } catch (Exception e) {
+                        logMsg(e.getMessage());
+                        e.printStackTrace();
+                    }
                 }
                 break;
             case ANTENNA_INFORMATION_REQUEST:
-                try {
-                    Field result = message.obj.getClass().getField("result");
-                    String[] results = (String[])result.get(message.obj);
-                    for (int index = 0; index != results.length; index++){
-                        logMsg("index: " + index + ",value: " + results[index]);
-                    }
+                if(hasError) {
+                    resp = Antenna.packErrorResponse(true);
+                }else {
+                    try {
+                        Field result = message.obj.getClass().getField("result");
+                        String[] results = (String[]) result.get(message.obj);
+                        for (int index = 0; index != results.length; index++) {
+                            logMsg(results[index]);
+                        }
+                        resp = Antenna.packInformationResp(eccCMD.localInfo, results);
 //                    logMsg("primary: " + results[0] + "secondary: " + results[1]);
-                } catch (NoSuchFieldException e) {
-                    e.printStackTrace();
-                } catch (IllegalAccessException e) {
-                    e.printStackTrace();
+                    } catch (NoSuchFieldException e) {
+                        e.printStackTrace();
+                    } catch (IllegalAccessException e) {
+                        e.printStackTrace();
+                    } catch (Exception e) {
+                        logMsg("get result error " + e.getMessage());
+                        e.printStackTrace();
+                    }
                 }
                 break;
             default:
                 break;
+        }
+        // send response data
+        if(resp != null){
+            eccClient.sendData(resp);
         }
     }
 
@@ -351,12 +376,12 @@ public class MainActivity extends AppCompatActivity implements ConnectionConfigB
      */
     @Override
     public void GoButtonClicked(String msg) {
-//        int port = Integer.parseInt(msg);
-//        eccClient.start(port);
-//        byte[] data = new byte[]{ANTENNA_CONFIGURATION_STATUS_REQUEST};
-        byte[] data = new byte[]{ANTENNA_CONFIGURATION_STATUS_REQUEST};
-//        byte[] data = new byte[]{ANTENNA_CONFIGURATION_REQUEST, 0x03};
-        eccCMD.callCmd(data);
+        int port = Integer.parseInt(msg);
+        eccClient.start(port);
+//        byte[] data = new byte[]{ANTENNA_INFORMATION_REQUEST, 0x02};
+////        byte[] data = new byte[]{ANTENNA_CONFIGURATION_STATUS_REQUEST};
+////        byte[] data = new byte[]{ANTENNA_CONFIGURATION_REQUEST, 0x03};
+//        eccCMD.callCmd(data);
     }
 
     private void logMsg(String msg){

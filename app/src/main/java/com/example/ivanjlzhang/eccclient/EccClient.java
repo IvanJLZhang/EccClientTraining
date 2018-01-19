@@ -96,6 +96,11 @@ public class EccClient {
     }
 
     public void sendData(final byte[] data){
+        logMsg("response data: " + toHexString(data));
+        if(serverIp.isEmpty() || serverPort == 0){
+            logMsg("no server connected.");
+            return;
+        }
         logMsg("response data to " + serverIp + ":" + serverPort);
         new Thread(new Runnable() {
             @Override
@@ -111,6 +116,8 @@ public class EccClient {
                 } catch (IOException e) {
                     logMsg("Send error:" + e);
                     stop();
+                } catch (Exception e){
+                    logMsg("Send error:" + e);
                 }
             }
         }).start();
